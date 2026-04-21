@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/61488/Downloads/**)",
+      "Bash(unzip -q TripBrain-main.zip)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(curl -s http://localhost:3002/api/health)",
+      "Bash(node -e \"require\\(''dotenv''\\).config\\({path:''.env.local''}\\); console.log\\(''ANTHROPIC_API_KEY starts with:'', \\(process.env.ANTHROPIC_API_KEY||''MISSING''\\).slice\\(0,20\\)\\); console.log\\(''length:'', \\(process.env.ANTHROPIC_API_KEY||''''\\).length\\);\")",
+      "Bash(tasklist //FI 'IMAGENAME eq node.exe')",
+      "Bash(curl -s http://localhost:3003/api/health)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(curl -s http://localhost:3000/api/debug-env)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:3100/api/debug-env)",
+      "Bash(curl -s http://localhost:3100/api/health)",
+      "Bash(wc -l \"C:/Users/61488/Documents/ClaudeCode/Personal/active/projects/TripBrainDark/supabase/migrations/\"*.sql)",
+      "Bash(while read:*)",
+      "Bash(do sed:*)",
+      "Bash(grep -rli \"tripbrain\\\\|TripBrain\" . --include=*.md --include=*.sql)"
+    ]
+  }
+}

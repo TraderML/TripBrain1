@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 265 25% 6%;
+    --foreground: 280 10% 98%;
+    --card: 265 25% 8%;
+    --card-foreground: 280 10% 98%;
+    --popover: 265 25% 8%;
+    --popover-foreground: 280 10% 98%;
+    --primary: 270 85% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 20% 15%;
+    --secondary-foreground: 280 10% 98%;
+    --muted: 270 20% 15%;
+    --muted-foreground: 280 10% 70%;
+    --accent: 275 80% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 280 30% 20%;
+    --input: 280 30% 20%;
+    --ring: 270 85% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Map marker pulse (Pokemon Go vibe) — ring expands + fades around a dot. */
+@keyframes tripbrain-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  80% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.tripbrain-pulse-ring {
+  animation: tripbrain-pulse 2.2s ease-out infinite;
+}
+
+/* Slower pulse for participant locations so users can distinguish
+   themselves from venue pins. */
+.tripbrain-pulse-ring-slow {
+  animation: tripbrain-pulse 3.4s ease-out infinite;
+}
+
+/* Pokemon-ish bob for the current user's avatar marker. */
+@keyframes tripbrain-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.tripbrain-bob {
+  animation: tripbrain-bob 1.6s ease-in-out infinite;
+}
+
+/* Bot avatar animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes pulse-think {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.08) rotate(-5deg); }
+  50% { transform: scale(0.95) rotate(3deg); }
+  75% { transform: scale(1.05) rotate(-2deg); }
+}
+
+@keyframes bounce-speak {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-5px) scale(1.1); }
+  60% { transform: translateY(1px) scale(0.95); }
+}
+
+@keyframes happy-pop {
+  0% { transform: scale(1) rotate(0deg); }
+  20% { transform: scale(1.2) rotate(-8deg); }
+  40% { transform: scale(1.15) rotate(5deg); }
+  60% { transform: scale(1.2) rotate(-3deg); }
+  80% { transform: scale(1.1) rotate(2deg); }
+  100% { transform: scale(1.05) rotate(0deg); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}

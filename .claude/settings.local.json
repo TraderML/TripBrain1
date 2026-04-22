@@ -19,7 +19,9 @@
       "Bash(wc -l \"C:/Users/61488/Documents/ClaudeCode/Personal/active/projects/TripBrainDark/supabase/migrations/\"*.sql)",
       "Bash(while read:*)",
       "Bash(do sed:*)",
-      "Bash(grep -rli \"tripbrain\\\\|TripBrain\" . --include=*.md --include=*.sql)"
+      "Bash(grep -rli \"tripbrain\\\\|TripBrain\" . --include=*.md --include=*.sql)",
+      "Bash(curl -s https://trip-brain-rosy.vercel.app/api/health)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

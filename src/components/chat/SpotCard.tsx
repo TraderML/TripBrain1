@@ -39,6 +39,9 @@ interface Props {
   spot: SpotData;
   tripId: string;
   onSave?: () => void;
+  /** DB id of the matching saved place — present only when spot is already on the map. */
+  savedPlaceId?: string | null;
+  onRemove?: () => void;
 }
 
 const PRICE_LABELS: Record<string, string> = {
@@ -91,10 +94,27 @@ function cleanText(raw: string | undefined): string {
     .trim();
 }
 
-export function SpotCard({ spot, tripId, onSave }: Props) {
+export function SpotCard({ spot, tripId, onSave, savedPlaceId, onRemove }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(spot.already_saved ?? false);
   const [imgOk, setImgOk] = useState(true);
+
+  const handleRemove = async () => {
+    if (!savedPlaceId) return;
+    if (!confirm(`Remove "${cleanName || spot.name}" from the map?`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/places/${savedPlaceId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setSaved(false);
+        onRemove?.();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const category: PlaceCategory = (spot.category as PlaceCategory | undefined) ??
     mapGoogleTypeToCategory((spot as { types?: string[] }).types);
@@ -221,11 +241,11 @@ export function SpotCard({ spot, tripId, onSave }: Props) {
 
         <div className="mt-2.5 flex gap-2">
           <button
-            onClick={handleSave}
-            disabled={saving || saved}
+            onClick={saved ? handleRemove : handleSave}
+            disabled={saving || (saved && !savedPlaceId)}
             className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               saved
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                ? "bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-700 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                 : saving
                   ? "bg-muted text-muted-foreground cursor-wait"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -233,7 +253,9 @@ export function SpotCard({ spot, tripId, onSave }: Props) {
           >
             {saved ? (
               <span className="inline-flex items-center justify-center gap-1">
-                <MapPin className="size-3" /> On map
+                <MapPin className="size-3" />
+                <span className="group-hover:hidden">On map</span>
+                <span className="hidden group-hover:inline">Remove</span>
               </span>
             ) : saving ? (
               "Adding…"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bot, Clock, ExternalLink, MessageCircle, Star } from "lucide-react";
+import { Bot, Clock, ExternalLink, MessageCircle, Star, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/components/map/categories";
@@ -12,6 +12,7 @@ interface Props {
   addedBy: Participant | null;
   onAskAgent: (place: Place) => void;
   onClose?: () => void;
+  onRemove?: (place: Place) => void | Promise<void>;
   compact?: boolean;
 }
 
@@ -53,8 +54,20 @@ export function PlaceCard({
   addedBy,
   onAskAgent,
   onClose,
+  onRemove,
   compact,
 }: Props) {
+  const [removing, setRemoving] = useState(false);
+  const handleRemove = async () => {
+    if (!onRemove) return;
+    if (!confirm(`Remove "${place.name}" from the map?`)) return;
+    setRemoving(true);
+    try {
+      await onRemove(place);
+    } finally {
+      setRemoving(false);
+    }
+  };
   const color = place.category ? CATEGORY_COLORS[place.category] : "#64748b";
   const label = place.category ? CATEGORY_LABELS[place.category] : "Other";
   const [details, setDetails] = useState<Details | null>(null);
@@ -233,6 +246,17 @@ export function PlaceCard({
             <ExternalLink className="size-3" />
             Maps
           </a>
+          {onRemove ? (
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={removing}
+              aria-label="Remove from map"
+              className="inline-flex items-center justify-center rounded-md border border-destructive/30 bg-background px-2.5 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

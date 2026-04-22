@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 
 import {
   CATEGORY_COLORS,
@@ -12,6 +12,14 @@ import type { Place, PlaceCategory } from "@/types/db";
 
 interface Props {
   places: Place[];
+}
+
+async function deletePlace(placeId: string): Promise<void> {
+  const res = await fetch(`/api/places/${placeId}`, { method: "DELETE" });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: "Delete failed" }));
+    throw new Error(error || "Delete failed");
+  }
 }
 
 function googleMapsUrl(place: Place) {
@@ -28,10 +36,29 @@ function googleMapsUrl(place: Place) {
 
 export function PlacesPanel({ places }: Props) {
   const [filter, setFilter] = useState<PlaceCategory | "all">("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = places
     .filter((p) => p.lat != null && p.lng != null)
     .filter((p) => filter === "all" || p.category === filter);
+
+  const handleDelete = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+    placeId: string,
+    name: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Remove "${name}" from the map?`)) return;
+    setDeletingId(placeId);
+    try {
+      await deletePlace(placeId);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -55,7 +82,7 @@ export function PlacesPanel({ places }: Props) {
 
       <ul className="flex flex-col gap-2 pr-1">
         {filtered.map((p) => (
-          <li key={p.id}>
+          <li key={p.id} className="group/place relative">
             <a
               href={googleMapsUrl(p)}
               target="_blank"
@@ -108,6 +135,15 @@ export function PlacesPanel({ places }: Props) {
                 </div>
               </div>
             </a>
+            <button
+              type="button"
+              onClick={(e) => handleDelete(e, p.id, p.name)}
+              disabled={deletingId === p.id}
+              aria-label={`Remove ${p.name} from map`}
+              className="absolute right-1.5 top-1.5 z-10 rounded-md bg-background/80 p-1 text-muted-foreground opacity-0 backdrop-blur-sm transition hover:bg-destructive/20 hover:text-destructive group-hover/place:opacity-100 focus:opacity-100 disabled:opacity-50"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
           </li>
         ))}
       </ul>

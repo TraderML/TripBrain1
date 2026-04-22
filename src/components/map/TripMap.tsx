@@ -424,6 +424,19 @@ export function TripMap({
                   onAskAgent(p);
                 }}
                 onClose={() => setSelected(null)}
+                onRemove={async (p) => {
+                  const res = await fetch(`/api/places/${p.id}`, {
+                    method: "DELETE",
+                  });
+                  if (!res.ok) {
+                    const { error } = await res.json().catch(() => ({
+                      error: "Delete failed",
+                    }));
+                    alert(error || "Delete failed");
+                    return;
+                  }
+                  setSelected(null);
+                }}
               />
             </Popup>
           ) : null}

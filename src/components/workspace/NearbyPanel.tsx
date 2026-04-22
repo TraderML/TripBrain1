@@ -20,6 +20,11 @@ export function NearbyPanel({ trip, places }: Props) {
   const savedPlaceIds = new Set(
     places.map((p) => p.google_place_id).filter(Boolean)
   );
+  // Lookup: google_place_id -> DB id, so SpotCard can DELETE by DB id.
+  const savedPlaceDbIdByGoogleId: Record<string, string> = {};
+  for (const p of places) {
+    if (p.google_place_id) savedPlaceDbIdByGoogleId[p.google_place_id] = p.id;
+  }
 
   const fetchNearby = useCallback(async () => {
     try {
@@ -109,11 +114,25 @@ export function NearbyPanel({ trip, places }: Props) {
                 key={`${spot.place_id ?? spot.name}-${i}`}
                 spot={spot}
                 tripId={trip.id}
+                savedPlaceId={
+                  spot.place_id
+                    ? (savedPlaceDbIdByGoogleId[spot.place_id] ?? null)
+                    : null
+                }
                 onSave={() => {
                   setResults((prev) =>
                     prev.map((s) =>
                       s.place_id === spot.place_id
                         ? { ...s, already_saved: true }
+                        : s
+                    )
+                  );
+                }}
+                onRemove={() => {
+                  setResults((prev) =>
+                    prev.map((s) =>
+                      s.place_id === spot.place_id
+                        ? { ...s, already_saved: false }
                         : s
                     )
                   );

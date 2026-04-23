@@ -139,7 +139,7 @@ export function TripWorkspace({
 
   return (
     <main className="flex h-dvh flex-col bg-background">
-      <header className="border-b bg-background/80 backdrop-blur">
+      <header className="relative z-40 border-b bg-background/80 backdrop-blur">
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold tracking-tight">

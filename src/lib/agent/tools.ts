@@ -124,6 +124,35 @@ export const mainAgentTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: "update_trip_memory",
+    description:
+      "Update the trip's collective memory (open_questions, decisions_made, constraints, tensions) based on chat context. Use this whenever the user tells you about a decision, a new hard constraint, an unresolved question, or a tension — or when they ask you to update the dashboard. You may also call this to correct or retract a stale entry. Prefer 'edit' over 'add + remove' when an item is being superseded.",
+    input_schema: {
+      type: "object",
+      properties: {
+        bucket: {
+          type: "string",
+          enum: ["open_questions", "decisions_made", "constraints", "tensions"],
+        },
+        op: {
+          type: "string",
+          enum: ["add", "edit", "remove"],
+        },
+        text: {
+          type: "string",
+          description:
+            "For 'add' and 'edit', the new text to store (<= 15 words, concrete). For 'remove', ignored.",
+        },
+        matches: {
+          type: "string",
+          description:
+            "For 'edit' and 'remove', a substring that uniquely identifies the existing entry to update/remove. Case-insensitive.",
+        },
+      },
+      required: ["bucket", "op"],
+    },
+  },
+  {
     name: "generate_plan",
     description:
       "Build a day-by-day itinerary for this trip from its saved places, grouped by geographic proximity + variety + participant preferences. OVERWRITES any existing plan. Use when the user asks for 'a plan', 'an itinerary', 'build the plan', 'what should we do day by day', or similar.",
@@ -208,6 +237,8 @@ export async function executeTool(
           return "Research agent is not available from inside a subagent.";
         }
         return await researchActivityTool(args, ctx);
+      case "update_trip_memory":
+        return await updateTripMemoryTool(args, ctx);
       case "generate_plan":
         return await generatePlanTool(args, ctx);
       case "web_search":
@@ -381,6 +412,67 @@ async function researchActivityTool(
 }
 
 // ---------------------------------------------------------------
+
+const updateTripMemoryArgs = z.object({
+  bucket: z.enum([
+    "open_questions",
+    "decisions_made",
+    "constraints",
+    "tensions",
+  ]),
+  op: z.enum(["add", "edit", "remove"]),
+  text: z.string().min(1).max(200).optional(),
+  matches: z.string().min(1).optional(),
+});
+
+async function updateTripMemoryTool(
+  rawArgs: unknown,
+  ctx: ToolContext
+): Promise<string> {
+  const args = updateTripMemoryArgs.parse(rawArgs);
+  const { data: memory } = await ctx.supabase
+    .from("trip_memory")
+    .select("open_questions, decisions_made, constraints, tensions")
+    .eq("trip_id", ctx.tripId)
+    .maybeSingle();
+  const current = {
+    open_questions: (memory?.open_questions as string[] | undefined) ?? [],
+    decisions_made: (memory?.decisions_made as string[] | undefined) ?? [],
+    constraints: (memory?.constraints as string[] | undefined) ?? [],
+    tensions: (memory?.tensions as string[] | undefined) ?? [],
+  };
+  const bucket = args.bucket;
+  let arr = [...current[bucket]];
+  if (args.op === "add") {
+    if (!args.text) return "update_trip_memory: 'add' requires text.";
+    arr.push(args.text);
+  } else if (args.op === "edit") {
+    if (!args.text || !args.matches) {
+      return "update_trip_memory: 'edit' requires both text and matches.";
+    }
+    const ix = arr.findIndex((s) =>
+      s.toLowerCase().includes(args.matches!.toLowerCase())
+    );
+    if (ix === -1) {
+      return `update_trip_memory: no item in ${bucket} matches "${args.matches}".`;
+    }
+    arr[ix] = args.text;
+  } else {
+    if (!args.matches) return "update_trip_memory: 'remove' requires matches.";
+    const before = arr.length;
+    arr = arr.filter(
+      (s) => !s.toLowerCase().includes(args.matches!.toLowerCase())
+    );
+    if (arr.length === before) {
+      return `update_trip_memory: no item in ${bucket} matches "${args.matches}".`;
+    }
+  }
+  await ctx.supabase
+    .from("trip_memory")
+    .update({ [bucket]: arr, updated_at: new Date().toISOString() })
+    .eq("trip_id", ctx.tripId);
+  return `Updated trip_memory.${bucket} (${args.op}).`;
+}
 
 const generatePlanArgs = z.object({
   num_days: z.number().int().positive().optional(),

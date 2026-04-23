@@ -20,6 +20,7 @@ import { TripMap } from "@/components/map/TripMap";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useChatInactivityWatcher } from "@/hooks/useChatInactivityWatcher";
+import { useChatMemorySync } from "@/hooks/useChatMemorySync";
 import { useParticipant } from "@/hooks/useParticipant";
 import { useRealtimePlaces } from "@/hooks/useRealtimePlaces";
 import { useTripPlan } from "@/hooks/useTripPlan";
@@ -124,6 +125,9 @@ export function TripWorkspace({
   const watchedMessages =
     activeRoomId === groupRoomId ? messages : groupMessages;
   useChatInactivityWatcher(trip.id, watchedMessages);
+  // Continuously merge new group-chat content into trip_memory (debounced
+  // server-side). Powered by the same watchedMessages stream.
+  useChatMemorySync(trip.id, watchedMessages?.length);
 
   if (hydrated && !participantId) {
     router.replace(`/trip/${trip.id}/join`);

@@ -162,10 +162,17 @@ export interface PlanDay {
   items: PlanItem[];
 }
 
+export interface PlanHistoryEntry {
+  title: string;
+  days: PlanDay[];
+  saved_at: string;
+}
+
 export interface TripPlan {
   id: string;
   trip_id: string;
   title: string;
   days: PlanDay[];
+  history: PlanHistoryEntry[];
   updated_at: string;
 }

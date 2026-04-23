@@ -3,7 +3,33 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { callLlmJson } from "@/lib/llm";
-import type { PlanDay, PlanItem, Place, TripPlan } from "@/types/db";
+import type {
+  PlanDay,
+  PlanHistoryEntry,
+  PlanItem,
+  Place,
+  TripPlan,
+} from "@/types/db";
+
+const HISTORY_CAP = 5;
+
+/**
+ * Prepend the current plan state to the history array, capping at HISTORY_CAP.
+ * Called by both the plan builder (agent regenerate) and the PUT route
+ * (manual edit save) so every non-trivial write is reversible via Undo.
+ */
+export function snapshotCurrentPlan(
+  current: { title: string | null; days: PlanDay[]; history?: PlanHistoryEntry[] } | null
+): PlanHistoryEntry[] {
+  if (!current) return [];
+  if (!current.days || current.days.length === 0) return current.history ?? [];
+  const entry: PlanHistoryEntry = {
+    title: current.title ?? "Trip Plan",
+    days: current.days,
+    saved_at: new Date().toISOString(),
+  };
+  return [entry, ...(current.history ?? [])].slice(0, HISTORY_CAP);
+}
 
 export interface BuildPlanOpts {
   num_days?: number;
@@ -170,12 +196,25 @@ async function upsertPlan(
   tripId: string,
   days: PlanDay[]
 ): Promise<TripPlan> {
+  // Read existing plan first so we can archive its current state into history.
+  // Small 2-query cost is worth the 'Undo' flow on regenerate.
+  const { data: existing } = await supabase
+    .from("trip_plans")
+    .select("title, days, history")
+    .eq("trip_id", tripId)
+    .maybeSingle();
+
+  const nextHistory = snapshotCurrentPlan(
+    (existing as { title: string | null; days: PlanDay[]; history?: PlanHistoryEntry[] } | null) ?? null
+  );
+
   const { data, error } = await supabase
     .from("trip_plans")
     .upsert(
       {
         trip_id: tripId,
         days,
+        history: nextHistory,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "trip_id" }

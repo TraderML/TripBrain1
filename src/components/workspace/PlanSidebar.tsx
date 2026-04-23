@@ -13,6 +13,7 @@ import {
   Share2,
   Sparkles,
   Trash2,
+  Undo2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -136,11 +137,43 @@ export function PlanSidebar({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {plan && (plan.history?.length ?? 0) > 0 ? (
+            <button
+              type="button"
+              aria-label="Undo last change"
+              title={`Restore previous version (${plan.history?.length ?? 0} saved)`}
+              onClick={async () => {
+                const res = await fetch(
+                  `/api/trips/${tripId}/plan/undo`,
+                  { method: "POST" }
+                );
+                if (!res.ok) {
+                  const { error } = await res.json().catch(() => ({
+                    error: "Undo failed",
+                  }));
+                  alert(error ?? "Undo failed");
+                  return;
+                }
+                await onRefetch();
+              }}
+              className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <Undo2 className="size-4" />
+            </button>
+          ) : null}
           <button
             type="button"
             aria-label="Regenerate plan"
             title="Regenerate with agent"
-            onClick={handleRegenerate}
+            onClick={async () => {
+              if (
+                !confirm(
+                  "Regenerate the plan with the agent? Your current version will be saved to history so you can undo."
+                )
+              )
+                return;
+              await handleRegenerate();
+            }}
             disabled={regenerating}
             className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
           >

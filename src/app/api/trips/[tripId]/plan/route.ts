@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { PlanDay, TripPlan } from "@/types/db";
+import { snapshotCurrentPlan } from "@/lib/agent/plan";
+import type { PlanDay, PlanHistoryEntry, TripPlan } from "@/types/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,20 @@ export async function PUT(
   }
 
   const supabase = getSupabaseServerClient();
+
+  // Read the existing plan first so we can push its current state into the
+  // history ring before overwriting. Keeps manual edits reversible alongside
+  // the agent-regenerate flow.
+  const { data: existing } = await supabase
+    .from("trip_plans")
+    .select("title, days, history")
+    .eq("trip_id", params.tripId)
+    .maybeSingle();
+
+  const nextHistory = snapshotCurrentPlan(
+    (existing as { title: string | null; days: PlanDay[]; history?: PlanHistoryEntry[] } | null) ?? null
+  );
+
   const { data, error } = await supabase
     .from("trip_plans")
     .upsert(
@@ -44,6 +59,7 @@ export async function PUT(
         trip_id: params.tripId,
         ...(body.title !== undefined ? { title: body.title } : {}),
         days: body.days,
+        history: nextHistory,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "trip_id" }

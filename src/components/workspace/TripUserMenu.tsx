@@ -81,7 +81,7 @@ export function TripUserMenu({ tripId, displayName, color }: Props) {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+4px)] z-20 w-56 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
+          className="absolute right-0 top-[calc(100%+4px)] z-50 w-56 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
         >
           <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
             Signed in as <span className="font-medium text-foreground">{displayName}</span>

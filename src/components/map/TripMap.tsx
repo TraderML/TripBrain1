@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import Map, { Marker, Popup } from "react-map-gl";
+import { useEffect, useMemo, useRef, useState } from "react";
+import MapboxMap, { Marker, Popup } from "react-map-gl";
 import type { MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const HOVER_OPEN_DELAY_MS = 120;
 const HOVER_CLOSE_DELAY_MS = 200;
 
+import { DayRouteLayer } from "@/components/map/DayRouteLayer";
 import { PlaceCard } from "@/components/map/PlaceCard";
 import {
   CATEGORY_COLORS,
@@ -17,7 +18,7 @@ import {
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useRealtimeLocations } from "@/hooks/useRealtimeLocations";
 import { cn } from "@/lib/utils";
-import type { Participant, Place, PlaceCategory, Trip } from "@/types/db";
+import type { Participant, Place, PlaceCategory, Trip, TripPlan } from "@/types/db";
 
 interface Props {
   trip: Trip;
@@ -25,6 +26,10 @@ interface Props {
   participants: Participant[];
   currentParticipantId: string | null;
   onAskAgent: (place: Place) => void;
+  /** Full plan (day-by-day). Used to render the focused day's route. */
+  plan?: TripPlan | null;
+  /** Index in plan.days that's currently highlighted. null = no focus. */
+  focusedDayIndex?: number | null;
 }
 
 type MapMode = "adventure" | "streets";
@@ -40,6 +45,8 @@ export function TripMap({
   participants,
   currentParticipantId,
   onAskAgent,
+  plan,
+  focusedDayIndex,
 }: Props) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const [filter, setFilter] = useState<PlaceCategory | "all">("all");
@@ -117,6 +124,49 @@ export function TripMap({
       ),
     [places, filter]
   );
+
+  // Focused-day computation: resolve the plan's ordered place_ids to the
+  // actual Place rows so we can number the markers and build the polyline.
+  const placesById = useMemo(
+    () => Object.fromEntries(places.map((p) => [p.id, p])),
+    [places]
+  );
+  const focusedDay =
+    plan && focusedDayIndex != null ? plan.days[focusedDayIndex] ?? null : null;
+  const focusedOrder = useMemo(() => {
+    if (!focusedDay) return new Map<string, number>();
+    const m = new Map<string, number>();
+    focusedDay.items.forEach((it, i) => {
+      m.set(it.place_id, i + 1);
+    });
+    return m;
+  }, [focusedDay]);
+  const focusedCoords = useMemo<[number, number][]>(() => {
+    if (!focusedDay) return [];
+    return focusedDay.items
+      .map((it) => placesById[it.place_id])
+      .filter((p) => p && p.lat != null && p.lng != null)
+      .map((p) => [p.lng as number, p.lat as number]);
+  }, [focusedDay, placesById]);
+
+  // When a day gets focused, zoom the map to encompass that day's stops.
+  useEffect(() => {
+    if (focusedCoords.length < 1) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    if (focusedCoords.length === 1) {
+      const [lng, lat] = focusedCoords[0];
+      map.flyTo({ center: [lng, lat], zoom: 14, duration: 800 });
+      return;
+    }
+    const lngs = focusedCoords.map((c) => c[0]);
+    const lats = focusedCoords.map((c) => c[1]);
+    const bounds: [[number, number], [number, number]] = [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)],
+    ];
+    map.fitBounds(bounds, { padding: 80, duration: 800, maxZoom: 15 });
+  }, [focusedCoords]);
 
   // Center on the trip destination first, then use the centroid ONLY of
   // places within ~50km of the destination. Otherwise a single bad geocode
@@ -264,7 +314,7 @@ export function TripMap({
       </div>
 
       <div className="relative flex-1">
-        <Map
+        <MapboxMap
           ref={mapRef}
           key={mode}
           mapboxAccessToken={token}
@@ -283,6 +333,9 @@ export function TripMap({
             const color = place.category
               ? CATEGORY_COLORS[place.category]
               : "#64748b";
+            const stopNum = focusedOrder.get(place.id);
+            const isFocused = stopNum != null;
+            const dimmed = focusedDay != null && !isFocused;
             return (
               <Marker
                 key={place.id}
@@ -297,23 +350,38 @@ export function TripMap({
                 <button
                   type="button"
                   aria-label={place.name}
-                  className="group relative flex size-6 items-center justify-center"
+                  className={cn(
+                    "group relative flex items-center justify-center transition-opacity",
+                    isFocused ? "size-7" : "size-6",
+                    dimmed ? "opacity-35" : "opacity-100"
+                  )}
                   onMouseEnter={() => scheduleHover(place)}
                   onMouseLeave={scheduleHoverClose}
                 >
                   <span
                     className="tripbrain-pulse-ring pointer-events-none absolute inset-0 rounded-full"
-                    style={{ backgroundColor: color, opacity: 0.5 }}
+                    style={{ backgroundColor: color, opacity: isFocused ? 0.7 : 0.5 }}
                     aria-hidden
                   />
-                  <span
-                    className="relative size-3.5 rounded-full border-2 border-white shadow-lg transition-transform group-hover:scale-125"
-                    style={{ backgroundColor: color }}
-                  />
+                  {isFocused ? (
+                    <span
+                      className="relative flex size-6 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110"
+                      style={{ backgroundColor: color }}
+                    >
+                      {stopNum}
+                    </span>
+                  ) : (
+                    <span
+                      className="relative size-3.5 rounded-full border-2 border-white shadow-lg transition-transform group-hover:scale-125"
+                      style={{ backgroundColor: color }}
+                    />
+                  )}
                 </button>
               </Marker>
             );
           })}
+
+          <DayRouteLayer coords={focusedCoords} />
 
           {Object.values(locations).map((loc) => {
             const p = participantsById[loc.participant_id];
@@ -440,7 +508,7 @@ export function TripMap({
               />
             </Popup>
           ) : null}
-        </Map>
+        </MapboxMap>
 
         <div className="pointer-events-auto absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
           <div className="flex overflow-hidden rounded-full border border-white/20 bg-background/80 text-xs font-medium shadow-lg backdrop-blur">

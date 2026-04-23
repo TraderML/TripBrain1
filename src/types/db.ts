@@ -143,3 +143,29 @@ export interface AiRun {
   model: string | null;
   created_at: string;
 }
+
+// ---------------------------------------------------------------
+// Trip plan (itinerary) — stored as one jsonb payload per trip.
+// ---------------------------------------------------------------
+export interface PlanItem {
+  place_id: string;
+  order: number;
+  notes: string | null;
+  checked: boolean;
+  time_hint: TimeOfDay | null;
+}
+
+export interface PlanDay {
+  day: number;
+  date: string | null;
+  title: string;
+  items: PlanItem[];
+}
+
+export interface TripPlan {
+  id: string;
+  trip_id: string;
+  title: string;
+  days: PlanDay[];
+  updated_at: string;
+}

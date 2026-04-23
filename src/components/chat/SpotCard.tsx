@@ -33,6 +33,8 @@ export interface SpotData {
   source_host?: string;
   thumbnail_url?: string;
   already_saved?: boolean;
+  /** Optional 1-line justification from Nearby re-rank (e.g. "Matches group's vegan preference"). */
+  reason?: string;
 }
 
 interface Props {
@@ -236,6 +238,13 @@ export function SpotCard({ spot, tripId, onSave, savedPlaceId, onRemove }: Props
         {cleanSummary ? (
           <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {cleanSummary}
+          </p>
+        ) : null}
+
+        {spot.reason ? (
+          <p className="mt-1.5 flex items-start gap-1 text-[10px] leading-snug text-primary/80">
+            <Sparkles className="mt-0.5 size-3 shrink-0" />
+            {spot.reason}
           </p>
         ) : null}
 

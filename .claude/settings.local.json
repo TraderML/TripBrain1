@@ -21,7 +21,12 @@
       "Bash(do sed:*)",
       "Bash(grep -rli \"tripbrain\\\\|TripBrain\" . --include=*.md --include=*.sql)",
       "Bash(curl -s https://trip-brain-rosy.vercel.app/api/health)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(curl -sI https://trip-brain-rosy.vercel.app/)",
+      "Bash(curl -s \"https://trip-brain-rosy.vercel.app/api/places/00000000-0000-0000-0000-000000000000\" -X DELETE)",
+      "Bash(curl -s -X GET \"https://trip-brain-rosy.vercel.app/api/places?trip_id=test\" -I)",
+      "Bash(curl -s https://trip-brain-rosy.vercel.app/)",
+      "Bash(grep -l \"getSupabaseBrowserClient\\\\|createClient\" \"C:/Users/61488/Documents/ClaudeCode/Personal/active/projects/EasternExeDark/src/lib/supabase\"/*.ts)"
     ]
   }
 }

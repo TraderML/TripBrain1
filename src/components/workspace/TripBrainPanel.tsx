@@ -8,7 +8,6 @@ import {
   MapPin,
   Plane,
   Square,
-  Sparkles,
   Trophy,
   Brain,
 } from "lucide-react";
@@ -24,7 +23,9 @@ interface Props {
   places: Place[];
 }
 
-type BrainTab = "graph" | "plan" | "places" | "todo" | "logistics";
+// The old `plan` subtab has been replaced by the persistent PlanSidebar —
+// kept as a dedicated surface rather than a cramped dashboard tab.
+type BrainTab = "graph" | "places" | "todo" | "logistics";
 
 const TABS: {
   id: BrainTab;
@@ -33,7 +34,6 @@ const TABS: {
   accent: string;
 }[] = [
   { id: "graph", label: "Brain", icon: Brain, accent: "#8b5cf6" },
-  { id: "plan", label: "Plan", icon: Sparkles, accent: "#22c55e" },
   { id: "places", label: "Places", icon: MapPin, accent: "#0ea5e9" },
   { id: "todo", label: "To-do", icon: ListTodo, accent: "#f59e0b" },
   { id: "logistics", label: "Travel", icon: Plane, accent: "#8b5cf6" },
@@ -62,7 +62,6 @@ export function TripBrainPanel({ trip, places }: Props) {
   const [tab, setTab] = useState<BrainTab>("graph");
   const [doneIds, setDoneIds] = useState<Set<number>>(new Set());
 
-  const priorities = brain?.memory?.priorities ?? [];
   const decisions = brain?.memory?.decisions_made ?? [];
   const openQuestions = brain?.memory?.open_questions ?? [];
   const constraints = brain?.memory?.constraints ?? [];
@@ -73,7 +72,6 @@ export function TripBrainPanel({ trip, places }: Props) {
 
   const counts: Record<BrainTab, number> = {
     graph: 0,
-    plan: priorities.length + decisions.filter((d) => categorizeDecision(d).kind === "other").length,
     places: brain?.placesTotal ?? places.length,
     todo: openQuestions.length,
     logistics: travelDecisions.length + constraints.length,
@@ -129,8 +127,6 @@ export function TripBrainPanel({ trip, places }: Props) {
       >
         {tab === "graph" ? (
           <TripBrainGraph trip={trip} />
-        ) : tab === "plan" ? (
-          <PlanTab priorities={priorities} decisions={decisions} />
         ) : tab === "places" ? (
           <PlacesPanel places={places} />
         ) : tab === "todo" ? (
@@ -156,68 +152,6 @@ export function TripBrainPanel({ trip, places }: Props) {
         )}
       </div>
     </aside>
-  );
-}
-
-function PlanTab({
-  priorities,
-  decisions,
-}: {
-  priorities: string[];
-  decisions: string[];
-}) {
-  const planDecisions = decisions.filter(
-    (d) => categorizeDecision(d).kind === "other"
-  );
-
-  if (priorities.length === 0 && planDecisions.length === 0) {
-    return <EmptyState label="Plan is still forming." />;
-  }
-
-  return (
-    <div className="space-y-5">
-      {priorities.length > 0 ? (
-        <div>
-          <SectionLabel
-            icon={Sparkles}
-            label="What we're prioritizing"
-            accent="#22c55e"
-          />
-          <ul className="mt-2 space-y-2">
-            {priorities.map((p, i) => (
-              <li
-                key={i}
-                className="rounded-md border bg-background/80 p-2.5 text-xs leading-snug"
-                style={{ borderLeftColor: "#22c55e", borderLeftWidth: 3 }}
-              >
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {planDecisions.length > 0 ? (
-        <div>
-          <SectionLabel
-            icon={Trophy}
-            label="Already decided"
-            accent="#8b5cf6"
-          />
-          <ul className="mt-2 space-y-2">
-            {planDecisions.map((d, i) => (
-              <li
-                key={i}
-                className="rounded-md border bg-background/80 p-2.5 text-xs leading-snug"
-                style={{ borderLeftColor: "#8b5cf6", borderLeftWidth: 3 }}
-              >
-                {d}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
   );
 }
 

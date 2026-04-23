@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
@@ -12,15 +12,19 @@ import { TripBrainPanel } from "@/components/workspace/TripBrainPanel";
 import { TripInfoPanel } from "@/components/workspace/TripInfoPanel";
 import { NearbyPanel } from "@/components/workspace/NearbyPanel";
 import { EventsPanel } from "@/components/workspace/EventsPanel";
+import { PlanSidebar } from "@/components/workspace/PlanSidebar";
+import { PlanEditorModal } from "@/components/workspace/PlanEditorModal";
 import { AddContextPanel } from "@/components/workspace/AddContextPanel";
 import { TripUserMenu } from "@/components/workspace/TripUserMenu";
 import { TripMap } from "@/components/map/TripMap";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useChatInactivityWatcher } from "@/hooks/useChatInactivityWatcher";
 import { useParticipant } from "@/hooks/useParticipant";
 import { useRealtimePlaces } from "@/hooks/useRealtimePlaces";
+import { useTripPlan } from "@/hooks/useTripPlan";
 import { useTripStatus } from "@/hooks/useTripStatus";
-import type { Participant, Place, Trip } from "@/types/db";
+import type { Participant, Place, Trip, TripPlan } from "@/types/db";
 
 interface Props {
   trip: Trip;
@@ -44,11 +48,33 @@ export function TripWorkspace({
   const trip = liveTrip ?? initialTrip;
 
   const { places } = useRealtimePlaces(initialTrip.id);
+  const { plan, loading: planLoading, refetch: refetchPlan, setPlan } =
+    useTripPlan(initialTrip.id);
 
   const [prefill, setPrefill] = useState<{ key: number; text: string }>({
     key: 0,
     text: "",
   });
+  const [focusedDayIndex, setFocusedDayIndex] = useState<number | null>(null);
+  const [planEditorOpen, setPlanEditorOpen] = useState(false);
+  const [planSheetOpen, setPlanSheetOpen] = useState(false);
+  const [planSidebarCollapsed, setPlanSidebarCollapsed] = useState(false);
+
+  const regeneratePlan = async (): Promise<TripPlan | null> => {
+    const res = await fetch("/api/agent/regenerate-plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trip_id: initialTrip.id }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "Regenerate failed" }));
+      alert(error ?? "Regenerate failed");
+      return null;
+    }
+    const body = (await res.json()) as { plan: TripPlan };
+    setPlan(body.plan);
+    return body.plan;
+  };
 
   const askAgentAbout = (place: Place) => {
     setTab("me");
@@ -125,6 +151,15 @@ export function TripWorkspace({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPlanSheetOpen(true)}
+              className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted lg:hidden"
+              aria-label="Open plan"
+            >
+              <CalendarDays className="size-3.5" />
+              Plan
+            </button>
             <button
               type="button"
               onClick={() => setAddOpen(true)}
@@ -251,6 +286,8 @@ export function TripWorkspace({
               participants={participants}
               currentParticipantId={participantId ?? null}
               onAskAgent={askAgentAbout}
+              plan={plan}
+              focusedDayIndex={focusedDayIndex}
             />
           )}
         </section>
@@ -260,7 +297,66 @@ export function TripWorkspace({
             <TripBrainPanel trip={trip} places={places} />
           </aside>
         ) : null}
+
+        {/* Persistent Plan sidebar — desktop, every tab. */}
+        <div className="hidden lg:flex">
+          <PlanSidebar
+            tripId={trip.id}
+            places={places}
+            plan={plan}
+            loading={planLoading}
+            focusedDayIndex={focusedDayIndex}
+            onFocusDay={setFocusedDayIndex}
+            onOpenEditor={() => setPlanEditorOpen(true)}
+            onRegenerate={async () => {
+              await regeneratePlan();
+            }}
+            onRefetch={refetchPlan}
+            collapsed={planSidebarCollapsed}
+            onToggleCollapsed={() =>
+              setPlanSidebarCollapsed((v) => !v)
+            }
+          />
+        </div>
       </div>
+
+      {/* Mobile: slide-over plan drawer. */}
+      <Sheet open={planSheetOpen} onOpenChange={setPlanSheetOpen}>
+        <SheetContent side="right" className="w-[90vw] max-w-sm p-0">
+          <PlanSidebar
+            tripId={trip.id}
+            places={places}
+            plan={plan}
+            loading={planLoading}
+            focusedDayIndex={focusedDayIndex}
+            onFocusDay={(i) => {
+              setFocusedDayIndex(i);
+              if (i != null) setPlanSheetOpen(false);
+            }}
+            onOpenEditor={() => {
+              setPlanSheetOpen(false);
+              setPlanEditorOpen(true);
+            }}
+            onRegenerate={async () => {
+              await regeneratePlan();
+            }}
+            onRefetch={refetchPlan}
+            collapsed={false}
+            onToggleCollapsed={() => setPlanSheetOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Full-screen plan editor. */}
+      <PlanEditorModal
+        open={planEditorOpen}
+        onClose={() => setPlanEditorOpen(false)}
+        tripId={trip.id}
+        places={places}
+        plan={plan}
+        onSaved={(p) => setPlan(p)}
+        onRegenerate={regeneratePlan}
+      />
 
       {trip.status !== "ready" ? (
         <IngestProgress trip={trip} uploads={uploads} />

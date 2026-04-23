@@ -7,6 +7,7 @@ import { z } from "zod";
 import { concatChunks } from "@/lib/embeddings";
 import { googlePlacesTextSearch } from "@/lib/places";
 import { braveSearch, isBraveAvailable } from "@/lib/brave";
+import { buildPlanForTrip } from "@/lib/agent/plan";
 import type {
   Participant,
   ParticipantProfile,
@@ -122,6 +123,25 @@ export const mainAgentTools: Anthropic.Tool[] = [
       required: ["description"],
     },
   },
+  {
+    name: "generate_plan",
+    description:
+      "Build a day-by-day itinerary for this trip from its saved places, grouped by geographic proximity + variety + participant preferences. OVERWRITES any existing plan. Use when the user asks for 'a plan', 'an itinerary', 'build the plan', 'what should we do day by day', or similar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        num_days: {
+          type: "number",
+          description: "Optional override for number of days. Defaults to (end_date - start_date)+1, or 3 if dates are missing.",
+        },
+        focus_areas: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional thematic filters, e.g. ['nightlife', 'budget'].",
+        },
+      },
+    },
+  },
 ];
 
 export const subagentResearchTools: Anthropic.Tool[] = [
@@ -188,6 +208,8 @@ export async function executeTool(
           return "Research agent is not available from inside a subagent.";
         }
         return await researchActivityTool(args, ctx);
+      case "generate_plan":
+        return await generatePlanTool(args, ctx);
       case "web_search":
         return await webSearchTool(args);
       default:
@@ -356,6 +378,29 @@ async function researchActivityTool(
     description: args.description,
     requesterContext: args.requester_context,
   });
+}
+
+// ---------------------------------------------------------------
+
+const generatePlanArgs = z.object({
+  num_days: z.number().int().positive().optional(),
+  focus_areas: z.array(z.string()).optional(),
+});
+
+async function generatePlanTool(
+  rawArgs: unknown,
+  ctx: ToolContext
+): Promise<string> {
+  const args = generatePlanArgs.parse(rawArgs);
+  const plan = await buildPlanForTrip(ctx.supabase, ctx.tripId, {
+    num_days: args.num_days,
+    focus_areas: args.focus_areas,
+  });
+  const itemCount = plan.days.reduce((a, d) => a + d.items.length, 0);
+  if (itemCount === 0) {
+    return "No places saved yet — add a few places to the map, then ask me to plan again.";
+  }
+  return `Planned ${plan.days.length} day${plan.days.length === 1 ? "" : "s"} with ${itemCount} place${itemCount === 1 ? "" : "s"}. Open the Plan sidebar to review and edit.`;
 }
 
 // ---------------------------------------------------------------

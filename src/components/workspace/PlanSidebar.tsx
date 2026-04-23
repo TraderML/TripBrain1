@@ -8,12 +8,15 @@ import {
   CheckCircle2,
   ChevronRight,
   Circle,
+  ExternalLink,
   Maximize2,
+  Share2,
   Sparkles,
   Trash2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { googleMapsDayUrl } from "@/lib/plan-links";
 import type { Place, PlanItem, TripPlan } from "@/types/db";
 
 interface Props {
@@ -145,6 +148,18 @@ export function PlanSidebar({
               className={cn("size-4", regenerating && "animate-pulse text-primary")}
             />
           </button>
+          {plan && plan.days.length > 0 ? (
+            <a
+              href={`/trip/${tripId}/plan/share`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Share or print plan"
+              title="Share / print as PDF"
+              className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <Share2 className="size-4" />
+            </a>
+          ) : null}
           <button
             type="button"
             aria-label="Expand editor"
@@ -183,40 +198,56 @@ export function PlanSidebar({
             {plan.days.map((day, dayIndex) => {
               const focused = focusedDayIndex === dayIndex;
               const itemsDone = day.items.filter((i) => i.checked).length;
+              const mapsUrl = googleMapsDayUrl(day, placesById);
               return (
                 <li key={`day-${dayIndex}`} className="border-b last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => onFocusDay(focused ? null : dayIndex)}
+                  <div
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-xs transition",
-                      focused
-                        ? "bg-primary/10 text-foreground"
-                        : "hover:bg-muted/50"
+                      "flex w-full items-stretch gap-0 transition",
+                      focused ? "bg-primary/10" : "hover:bg-muted/50"
                     )}
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                            focused
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {day.day}
-                        </span>
-                        <span className="truncate font-semibold">{day.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => onFocusDay(focused ? null : dayIndex)}
+                      className="flex flex-1 items-center justify-between gap-2 px-4 py-2 text-left text-xs"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                              focused
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {day.day}
+                          </span>
+                          <span className="truncate font-semibold">{day.title}</span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 pl-7 text-[10px] text-muted-foreground">
+                          {day.date ? <span>{day.date}</span> : null}
+                          <span>
+                            {itemsDone}/{day.items.length} done
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-0.5 flex items-center gap-2 pl-7 text-[10px] text-muted-foreground">
-                        {day.date ? <span>{day.date}</span> : null}
-                        <span>
-                          {itemsDone}/{day.items.length} done
-                        </span>
-                      </div>
-                    </div>
-                  </button>
+                    </button>
+                    {mapsUrl ? (
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open day ${day.day} in Google Maps`}
+                        title="Open day's route in Google Maps"
+                        className="flex shrink-0 items-center justify-center px-3 text-muted-foreground transition hover:text-foreground"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    ) : null}
+                  </div>
 
                   {day.items.length > 0 ? (
                     <ul className="flex flex-col gap-1 px-2 pb-2">

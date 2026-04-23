@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ExternalLink,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { googleMapsDayUrl } from "@/lib/plan-links";
 import type { Place, PlanDay, TripPlan } from "@/types/db";
 
 interface Props {
@@ -253,11 +262,29 @@ export function PlanEditorModal({
                     onChange={(e) => updateDay(di, { date: e.target.value || null })}
                     className="rounded-md border bg-background px-2 py-1 text-xs"
                   />
+                  {(() => {
+                    const url = googleMapsDayUrl(day, placesById);
+                    return url ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Open day in Google Maps"
+                        title="Open day's route in Google Maps"
+                        className="ml-auto rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      >
+                        <ExternalLink className="size-4" />
+                      </a>
+                    ) : null;
+                  })()}
                   <button
                     type="button"
                     onClick={() => removeDay(di)}
                     aria-label="Remove day"
-                    className="ml-auto rounded-md p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                    className={cn(
+                      "rounded-md p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive",
+                      !googleMapsDayUrl(day, placesById) && "ml-auto"
+                    )}
                   >
                     <Trash2 className="size-4" />
                   </button>
